@@ -723,7 +723,10 @@ export const useZoomPan = ({
     const contentStyle = React.useMemo(() => {
         const style: React.CSSProperties = {
             transformOrigin: 'center',
-            transition: isTransitioning ? `transform ${TRANSITION_DURATION}ms ${TRANSITION_CURVE}` : 'none'
+            transition: isTransitioning ? `transform ${TRANSITION_DURATION}ms ${TRANSITION_CURVE}` : 'none',
+            touchAction: 'none',
+            userSelect: 'none',
+            WebkitUserSelect: 'none',
         }
 
         if (config.manageCursor) {

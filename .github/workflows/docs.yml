@@ -4,6 +4,14 @@ on:
   push:
     branches:
       - main
+    paths:
+      - 'dev/**'
+      - 'src/**'
+      - 'README.md'
+      - 'vite.config.ts'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/docs.yml'
   workflow_dispatch:
 
 permissions:
