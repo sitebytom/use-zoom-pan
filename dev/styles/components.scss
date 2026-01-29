@@ -1,0 +1,430 @@
+/* Component Panels & Examples */
+.example-section {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.example {
+  &-header {
+    margin-bottom: 32px;
+
+    &-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+  }
+
+  &-title {
+    font-size: 38px;
+    font-weight: 800;
+    margin-bottom: 12px;
+    letter-spacing: -0.06em;
+    color: var(--text);
+  }
+
+  &-description {
+    color: var(--text-dim);
+    line-height: 1.7;
+    font-size: 16px;
+    margin-bottom: 24px;
+    max-width: 600px;
+  }
+}
+
+/* Tabs */
+.tabs-header {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+  justify-content: flex-end;
+}
+
+.tab-button {
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.15s ease;
+
+  &:hover {
+    color: var(--text);
+    background: var(--surface-1);
+  }
+
+  &.active {
+    background: var(--surface-2);
+    color: var(--text);
+    border-color: var(--border-bright);
+  }
+}
+
+/* Example Card / Viewport */
+.viewport-container {
+  overflow: hidden;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: var(--radius-md);
+  background: var(--bg);
+  border: 1px solid var(--border);
+
+  /* Corner Markers */
+  &::before,
+  &::after {
+    content: '';
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    pointer-events: none;
+    z-index: 5;
+    border: 1px solid var(--text-muted);
+  }
+
+  &::before {
+    top: 12px;
+    left: 12px;
+    border-right: none;
+    border-bottom: none;
+  }
+
+  &::after {
+    bottom: 12px;
+    right: 12px;
+    border-left: none;
+    border-top: none;
+  }
+}
+
+.viewport-content {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  background: var(--bg);
+  background-image: 
+    linear-gradient(var(--border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border) 1px, transparent 1px),
+    radial-gradient(circle at 1px 1px, var(--border-bright) 1.5px, transparent 0);
+  background-size: 40px 40px, 40px 40px, 200px 200px;
+  background-position: -0.5px -0.5px, -0.5px -0.5px, -0.5px -0.5px;
+  overflow: visible;
+  display: block; // Removed flex to avoid centering conflicts
+}
+
+.viewport-canvas {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform-origin: center;
+  flex-shrink: 0;
+  display: block;
+}
+
+.viewport-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  user-select: none;
+  transition: opacity 0.3s ease;
+  display: block; // Prevents bottom gap
+}
+
+.panel-content {
+  position: relative;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.panel-extra {
+  margin-top: 24px;
+  animation: fadeIn 0.8s cubic-bezier(0.2, 0, 0, 1) both;
+  animation-delay: 0.1s;
+}
+
+.aspect {
+  &-video { aspect-ratio: 16 / 9; }
+  &-16-10 { aspect-ratio: 16 / 10; }
+  &-5-4 { aspect-ratio: 5 / 4; }
+  &-square { aspect-ratio: 1 / 1; }
+}
+
+/* Code Preview */
+.code-preview {
+  background: #0d0d0e;
+  padding: 32px;
+  font-family: var(--font-mono);
+  font-size: 14px;
+  line-height: 1.7;
+  position: relative;
+  white-space: pre;
+  color: #e2e8f0;
+  overflow: auto;
+  height: 100%;
+}
+
+.copy-button {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 11px;
+
+  &:hover {
+    background: var(--border);
+    color: var(--text);
+  }
+}
+
+/* Controls */
+.viewport-controls {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 10;
+}
+
+.control-button {
+  width: 36px;
+  height: 36px;
+  background: var(--surface-0);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-dim);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  transition: all 0.15s ease;
+
+  &:hover {
+    background: var(--surface-1);
+    border-color: var(--border-bright);
+    color: var(--text);
+  }
+
+  &-inner {
+    transform: translateY(-1px);
+  }
+}
+
+/* Playground Panel */
+.playground {
+  &-panel {
+    padding: 32px;
+    background: var(--surface-0);
+    border-top: 1px solid var(--border);
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 32px;
+
+    @media (max-width: 1024px) {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    @media (max-width: 640px) {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  &-group {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  &-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    letter-spacing: 0.1em;
+  }
+
+  &-value {
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 11px;
+  }
+
+  &-range {
+    width: 100%;
+    height: 2px;
+    background: var(--surface-2);
+    appearance: none;
+    -webkit-appearance: none;
+    border-radius: 2px;
+    outline: none;
+
+    &::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 12px;
+      height: 12px;
+      background: var(--text);
+      border-radius: 50%;
+      cursor: pointer;
+      border: 2px solid var(--bg);
+      box-shadow: 0 0 0 1px var(--border);
+      transition: all 0.1s ease;
+    }
+  }
+}
+
+/* Pins */
+.pin-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.pin {
+  position: absolute;
+  pointer-events: auto;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  &-marker {
+    width: 10px;
+    height: 10px;
+    background: var(--bg);
+    border: 2px solid var(--text);
+    border-radius: 50%;
+    transition: all 0.2s ease;
+  }
+
+  &:hover .pin-marker {
+    transform: scale(1.2);
+    background: var(--text);
+  }
+
+  &.selected .pin-marker {
+    transform: scale(1.4);
+    background: var(--text);
+    box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.2);
+  }
+
+  &-label {
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    padding: 4px 8px;
+    border-radius: var(--radius-sm);
+    font-size: 11px;
+    font-weight: 500;
+    margin-bottom: 6px;
+    white-space: nowrap;
+    color: var(--text);
+  }
+}
+
+.selected-badge {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text);
+  z-index: 10;
+  font-family: var(--font-mono);
+  transition: opacity 0.3s;
+}
+
+/* Shared Utilities */
+.panel {
+  &-header-info {
+    flex: 1 1 400px;
+  }
+
+  &-description-text {
+    font-size: 15px;
+  }
+
+  &-tabs-wrapper {
+    background: var(--bg);
+    padding: 2px;
+    border-radius: var(--radius-sm);
+    display: flex;
+    gap: 2px;
+    border: 1px solid var(--border);
+  }
+
+  &-tab-btn {
+    border: none !important;
+    border-radius: 2px !important;
+  }
+
+  &-preview-container {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    position: relative;
+  }
+
+  &-code-container {
+    flex: 1;
+    background: var(--bg);
+    border-top: 1px solid var(--border);
+  }
+
+  &-copy-wrapper {
+    display: flex;
+    justify-content: flex-end;
+    position: sticky;
+    top: 0;
+    right: 0;
+    margin-bottom: -32px;
+    z-index: 10;
+    pointer-events: none;
+
+    .copy-button {
+      pointer-events: auto;
+      margin: 12px;
+    }
+  }
+
+  &-code-pre {
+    border: none !important;
+    margin: 0 !important;
+    background: transparent !important;
+    padding: 16px 0 0 0 !important; // Add top padding to clear the copy button
+  }
+
+  &-code-text {
+    color: #eee;
+    font-size: 13px;
+  }
+
+  &-extra-container {
+    margin-top: 32px;
+  }
+}
