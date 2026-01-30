@@ -4,14 +4,23 @@ import React, { useRef, CSSProperties } from 'react'
 import { useZoomPan, ZoomPanOptions } from './useZoomPan'
 
 interface ZoomPanProps {
+    /** The content to be made zoomable and pannable (e.g., an <img> or <svg>) */
     children: React.ReactNode
+    /** Optional CSS class for the wrapper container */
     className?: string
+    /** Optional inline styles for the wrapper container */
     style?: CSSProperties
+    /** Optional CSS class for the inner content wrapper */
     contentClassName?: string
+    /** Optional inline styles for the inner content wrapper */
     contentStyle?: CSSProperties
+    /** Whether to enable zoom/pan interactions (default: true) */
     enableZoom?: boolean
+    /** Callback triggered when a swipe-left (next) is detected on the container */
     onNext?: () => void
+    /** Callback triggered when a swipe-right (prev) is detected on the container */
     onPrev?: () => void
+    /** Advanced configuration for zoom sensitivity, bounds, etc. */
     options?: ZoomPanOptions
 }
 
@@ -58,22 +67,25 @@ export const ZoomPan: React.FC<ZoomPanProps> = ({
         width: '100%',
         height: '100%',
         overflow: 'hidden',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
         cursor: scale > 1 ? 'grab' : enableZoom ? 'zoom-in' : 'default',
         position: 'relative',
         ...style,
     }
 
+    /**
+     * Styles for the content wrapper.
+     * We use fixed top-left positioning and apply the scale/translate transforms
+     * calculated by the hook.
+     */
     const defaultContentStyle: CSSProperties = {
         transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
         ...contentProps.style,
         userSelect: 'none',
         WebkitUserSelect: 'none',
         touchAction: 'none',
-        maxWidth: '100%',
-        maxHeight: '100%',
+        position: 'absolute',
+        top: 0,
+        left: 0,
         ...contentStyle,
     }
 

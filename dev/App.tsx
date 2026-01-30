@@ -12,7 +12,8 @@ import { Footer } from './components/layout/Footer'
 import SimpleImageExample from './components/examples/SimpleImageExample'
 import simpleImageCode from './components/examples/SimpleImageExample?raw'
 
-import CustomHookExample, { DEFAULT_PLAYGROUND_OPTIONS } from './components/examples/CustomHookExample'
+import CustomHookExample from './components/examples/CustomHookExample'
+import { DEFAULT_PLAYGROUND_OPTIONS } from './components/examples/constants'
 import customHookCode from './components/examples/CustomHookExample?raw'
 
 import GalleryExample from './components/examples/GalleryExample'

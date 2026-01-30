@@ -2,12 +2,7 @@ import React, { useRef, useState } from 'react'
 import { useZoomPan } from '../../../src'
 import { ControlButton } from '../shared'
 
-const DEFAULT_PLAYGROUND_OPTIONS = {
-  minScale: 1,
-  maxScale: 4,
-  zoomSensitivity: 0.002,
-  clickZoomScale: 2.5
-}
+import { DEFAULT_PLAYGROUND_OPTIONS } from './constants'
 
 const CustomHookViewport = ({ options, onReset }: { options: typeof DEFAULT_PLAYGROUND_OPTIONS, onReset: () => void }) => {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -126,5 +121,4 @@ const CustomHookExample = ({ mode, options, setOptions, onReset }: {
   return <CustomHookControls options={options} setOptions={setOptions} />
 }
 
-export { DEFAULT_PLAYGROUND_OPTIONS }
 export default CustomHookExample

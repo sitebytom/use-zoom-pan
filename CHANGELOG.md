@@ -1,5 +1,11 @@
 # @sitebytom/use-zoom-pan
 
+## 1.0.3
+
+### Patch Changes
+
+- Refactor to top-left origin for precision focal point tracking, add mobile double-tap zoom, implement rect caching for performance, and enhance documentation.
+
 ## 1.0.2
 
 ### Patch Changes
@@ -11,7 +17,6 @@
 ### Patch Changes
 
 - 68afa42: fix: automatically apply touch-action: none to content for better mobile support
-
 
 ## 1.0.0
 
