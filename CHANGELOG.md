@@ -1,5 +1,11 @@
 # @sitebytom/use-zoom-pan
 
+## 1.0.4
+
+### Patch Changes
+
+- Added keyboard support (zoom/pan), modularized codebase, improved accessibility, and refined interaction scoping.
+
 ## 1.0.3
 
 ### Patch Changes

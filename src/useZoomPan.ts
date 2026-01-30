@@ -1,177 +1,15 @@
 'use client'
 
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
-
-/** Represents a 2D coordinate or translation offset */
-interface Position {
-    x: number
-    y: number
-}
-
-export interface ZoomPanOptions {
-    /** Minimum zoom scale (default: 1) */
-    minScale?: number
-    /** Maximum zoom scale (default: 4) */
-    maxScale?: number
-    /** Initial zoom scale (default: minScale) */
-    initialScale?: number
-    /** Initial x/y position (default: {x:0, y:0}) */
-    initialPosition?: Position
-    /** Mouse wheel zoom sensitivity (default: 0.002) */
-    zoomSensitivity?: number
-    /** Zoom level when clicking to zoom (default: 2.5) */
-    clickZoomScale?: number
-    /** Pixels moved before drag is detected on mouse (default: 5) */
-    dragThresholdMouse?: number
-    /** Pixels moved before drag is detected on touch (default: 10) */
-    dragThresholdTouch?: number
-    /** Pixels swiped before navigation triggers (default: 50) */
-    swipeThreshold?: number
-    /** Extra pan space beyond image edges in pixels (default: 80) */
-    boundsBuffer?: number
-    /** Whether to automatically manage cursor states (default: true) */
-    manageCursor?: boolean
-    /** Whether to enable swipe navigation (default: true) */
-    enableSwipe?: boolean
-}
-
-/** Properties for the useZoomPan hook */
-interface ZoomPanProps {
-    /** 
-     * Reference to the container element that will host the zoomable content.
-     * The first child of this container is assumed to be the content unless contentRef is used.
-     */
-    containerRef: React.RefObject<HTMLElement | null>
-    /** Whether to enable zoom interactions (default: true) */
-    enableZoom?: boolean
-    /** Callback triggered on swipe-left (next) */
-    onNext?: () => void
-    /** Callback triggered on swipe-right (prev) */
-    onPrev?: () => void
-    /** Configuration options for zoom and pan behavior */
-    options?: ZoomPanOptions
-}
-
-// Default configuration
-const DEFAULT_OPTIONS: Required<Omit<ZoomPanOptions, 'initialScale' | 'initialPosition'>> & { initialScale?: number, initialPosition?: Position } = {
-    minScale: 1,
-    maxScale: 6,
-    zoomSensitivity: 0.002,
-    clickZoomScale: 2.5,
-    dragThresholdMouse: 5,
-    dragThresholdTouch: 10,
-    swipeThreshold: 50,
-    boundsBuffer: 80,
-    manageCursor: true,
-    enableSwipe: true,
-    initialScale: undefined,
-    initialPosition: undefined,
-}
-
-const TRANSITION_DURATION = 400
-const TRANSITION_CURVE = 'cubic-bezier(0.2, 0, 0, 1)'
-
-/** Internal state tracking for mouse/touch dragging */
-interface DragState {
-    /** Current cumulative X position relative to start position */
-    x: number
-    /** Current cumulative Y position relative to start position */
-    y: number
-    /** Flag to prevent click events if a drag occurred */
-    hasDragged: boolean
-    /** Initial clientX when interaction started */
-    startX: number
-    /** Initial clientY when interaction started */
-    startY: number
-}
-
-/** Internal state for tracking multi-touch pinch-to-zoom gestures */
-interface PinchState {
-    /** Distance between two fingers when pinch started */
-    startDist: number
-    /** Zoom level when pinch started */
-    initialScale: number
-    /** Center X between two fingers when pinch started */
-    startX: number
-    /** Center Y between two fingers when pinch started */
-    startY: number
-    /** Content position when pinch started */
-    startPos: Position
-    /** Cached container rect for performant coordinate mapping during the gesture */
-    containerRect?: DOMRect | null
-}
-
-// Helper functions for boundary calculations
-/** Minimum and maximum allowed translation offsets for the current scale */
-interface Bounds {
-    minX: number
-    maxX: number
-    minY: number
-    maxY: number
-}
-
-/**
- * Computes the pan boundaries based on the current scale and container/element dimensions.
- * Uses a 'top-left' origin (0,0) coordinate system.
- * Returns min/max translation values so content never shows too much empty space
- * (with buffer when content fits, full edge clamping when zoomed in).
- */
-const calculateBounds = (
-    targetScale: number,
-    container: HTMLElement | null,
-    element: HTMLElement | null,
-    boundsBuffer: number
-): Bounds => {
-    if (!container || !element) return { minX: 0, maxX: 0, minY: 0, maxY: 0 }
-
-    const cw = container.clientWidth
-    const ch = container.clientHeight
-    const ew = element.offsetWidth || cw
-    const eh = element.offsetHeight || ch
-
-    const sw = ew * targetScale
-    const sh = eh * targetScale
-
-    // When scaled content fits inside container → allow small buffer movement around the center
-    const minX = sw <= cw ? (cw - sw) / 2 - boundsBuffer : cw - sw - boundsBuffer
-    const maxX = sw <= cw ? (cw - sw) / 2 + boundsBuffer : boundsBuffer
-
-    const minY = sh <= ch ? (ch - sh) / 2 - boundsBuffer : ch - sh - boundsBuffer
-    const maxY = sh <= ch ? (ch - sh) / 2 + boundsBuffer : boundsBuffer
-
-    return { minX, maxX, minY, maxY }
-}
-
-/** Ensures the given position stays within the calculated pan boundaries */
-const clampPosition = (
-    pos: Position,
-    targetScale: number,
-    container: HTMLElement | null,
-    element: HTMLElement | null,
-    boundsBuffer: number
-): Position => {
-    const b = calculateBounds(targetScale, container, element, boundsBuffer)
-    return {
-        x: Math.max(b.minX, Math.min(b.maxX, pos.x)),
-        y: Math.max(b.minY, Math.min(b.maxY, pos.y)),
-    }
-}
-
-/** 
- * Normalizes wheel delta across browsers and input devices.
- * Trackpads send small deltas, physical wheels send large ones mapped by deltaMode.
- */
-const normalizeWheelDelta = (e: WheelEvent, sensitivity: number): number => {
-    // deltaMode 1 is 'lines' (physical wheels), 0 is 'pixels' (trackpads)
-    const factor = e.deltaMode === 1 ? 20 : 1 
-    return -e.deltaY * factor * sensitivity
-}
+import { Position, ZoomPanProps, DragState, PinchState, GestureType } from './types'
+import { DEFAULT_OPTIONS, TRANSITION_DURATION, TRANSITION_CURVE } from './constants'
+import { clampPosition, normalizeWheelDelta } from './utils'
 
 /**
  * A highly optimized hook for zoom and pan interactions.
  * Supports mouse wheel, dragging, double-click to focal zoom, and pinch-to-zoom on touch.
  */
-export const useZoomPan = ({
+export const useZoomPan = <T extends HTMLElement = HTMLElement>({
     containerRef,
     enableZoom = true,
     onNext,
@@ -196,16 +34,24 @@ export const useZoomPan = ({
         options.initialPosition
     ])
 
-    const contentRef = React.useRef<HTMLElement | null>(null)
+    const contentRef = React.useRef<T | null>(null)
 
     // Internal helper to get content element
     const getContentElement = useCallback(() => {
-        return (contentRef.current || containerRef.current?.firstElementChild) as HTMLElement | null
+        return (contentRef.current || containerRef.current?.firstElementChild) as T | null
     }, [containerRef])
+
     const [scale, setScale] = useState(config.initialScale ?? config.minScale)
     const [position, setPosition] = useState<Position>(config.initialPosition ?? { x: 0, y: 0 })
     const [isDragging, setIsDragging] = useState(false)
     const [isTransitioning, setIsTransitioning] = useState(false)
+    const [isMouseOver, setIsMouseOver] = useState(false)
+    
+    // Safety guard for rapid animations
+    const isAnimating = useRef(false)
+    
+    // Gesture tracking
+    const activeGesture = useRef<GestureType>('none')
 
     const dragStartRef = useRef<DragState>({
         x: 0,
@@ -244,11 +90,13 @@ export const useZoomPan = ({
             }
             // Invalidate rect cache when interaction ends
             cachedRectRef.current = null
+            activeGesture.current = 'none'
         }
 
         const handleBlur = () => {
             setIsDragging(false)
             cachedRectRef.current = null
+            activeGesture.current = 'none'
         }
 
         window.addEventListener('mouseup', handleGlobalUp)
@@ -268,25 +116,26 @@ export const useZoomPan = ({
         }
     }, [])
 
-
     // Handle container resize and content load
     const updateBoundsAndClamp = useCallback(() => {
         const container = containerRef.current
         const content = getContentElement()
         if (!container || !content) return
-            const currentPos = { x: stateRef.current.position.x, y: stateRef.current.position.y }
-            const clamped = clampPosition(currentPos, stateRef.current.scale, container, content, config.boundsBuffer)
-            if (clamped.x !== currentPos.x || clamped.y !== currentPos.y) {
-                setPosition(clamped)
-            }
+        
+        const currentPos = { x: stateRef.current.position.x, y: stateRef.current.position.y }
+        const clamped = clampPosition(currentPos, stateRef.current.scale, container, content, config.boundsBuffer)
+        if (clamped.x !== currentPos.x || clamped.y !== currentPos.y) {
+            setPosition(clamped)
+        }
     }, [containerRef, config.boundsBuffer, getContentElement])
 
-    React.useLayoutEffect(() => {
+    // Keyboard navigation
+    useLayoutEffect(() => {
         const container = containerRef.current
         const content = getContentElement()
         if (!container || !content) return
 
-        // Only run if we just mounted or scale changed to initial value
+        // Initial centering
         if (position.x === 0 && position.y === 0 && scale === (config.initialScale ?? config.minScale)) {
             const cw = container.clientWidth
             const ch = container.clientHeight
@@ -307,49 +156,35 @@ export const useZoomPan = ({
         observer.observe(container)
         
         // Also listen for image loads in the content
+        const handleLoad = () => updateBoundsAndClamp()
+        
         if (content instanceof HTMLImageElement && !content.complete) {
-            content.addEventListener('load', updateBoundsAndClamp)
+            content.addEventListener('load', handleLoad)
         }
 
         return () => {
             observer.disconnect()
             if (content instanceof HTMLImageElement) {
-                content.removeEventListener('load', updateBoundsAndClamp)
+                content.removeEventListener('load', handleLoad)
             }
         }
-    }, [containerRef, getContentElement, config.initialScale, config.minScale, scale, position.x, position.y, updateBoundsAndClamp])
-
-    // Internal clamp helper that uses current config and container
-    const getClampedPosition = useCallback(
-        (pos: Position, targetScale: number, element: HTMLElement): Position => {
-            return clampPosition(
-                pos,
-                targetScale,
-                containerRef.current,
-                element,
-                config.boundsBuffer
-            )
-        },
-        [containerRef, config.boundsBuffer],
-    )
+    }, [containerRef, getContentElement, config.initialScale, config.minScale, scale, updateBoundsAndClamp])
 
     /**
      * Internal handler for manual wheel events. 
-     * Uses a non-passive listener to allow preventDefault() when zooming.
      */
     const handleWheelManual = useCallback(
         (e: WheelEvent) => {
             if (!stateRef.current.enableZoom) return
-            setIsTransitioning(false) // Cancel any active transition
+            setIsTransitioning(false) 
             e.preventDefault()
 
             const { scale: currentScale, position: currentPosition, config } = stateRef.current
             
-            // Normalize deltaY: Trackpads often send small deltas, physical wheels send large ones.
             const delta = normalizeWheelDelta(e, config.zoomSensitivity)
             const newScale = Math.min(Math.max(config.minScale, currentScale + delta), config.maxScale)
 
-            if (newScale === currentScale) return // No change
+            if (newScale === currentScale) return 
 
             const container = containerRef.current
             const content = getContentElement()
@@ -362,13 +197,9 @@ export const useZoomPan = ({
                 }
                 if (!rect) return
                 
-                // Mouse position relative to container top-left
                 const mouseX = e.clientX - rect.left
                 const mouseY = e.clientY - rect.top
 
-                // Calculate focal point preservation using top-left origin:
-                // We find the normalized content coordinate (0 to 1 range across the element)
-                // currently under the mouse, then ensure it remains there after scaling.
                 const px = (mouseX - currentPosition.x) / currentScale
                 const py = (mouseY - currentPosition.y) / currentScale
 
@@ -377,15 +208,12 @@ export const useZoomPan = ({
                     y: mouseY - py * newScale,
                 }
 
-                // Numeric safety guard
                 if (isNaN(newPosition.x) || isNaN(newPosition.y) || !isFinite(newPosition.x) || !isFinite(newPosition.y)) {
-                    console.warn('Invalid zoom position calculated')
                     return
                 }
 
                 if (newScale === config.minScale) {
-                    // When zooming back all the way, automatically re-center the content
-                    const cw = rect.width // Use cached rect dimensions
+                    const cw = rect.width 
                     const ch = rect.height
                     const iw = content.offsetWidth || cw
                     const ih = content.offsetHeight || ch
@@ -394,13 +222,13 @@ export const useZoomPan = ({
                         y: (ch - ih * newScale) / 2
                     })
                 } else {
-                    const clampedPosition = getClampedPosition(newPosition, newScale, content)
+                    const clampedPosition = clampPosition(newPosition, newScale, container, content, config.boundsBuffer)
                     setPosition(clampedPosition)
                 }
                 setScale(newScale)
             }
         },
-        [getClampedPosition, containerRef, getContentElement],
+        [containerRef, getContentElement],
     )
 
     useEffect(() => {
@@ -411,8 +239,11 @@ export const useZoomPan = ({
         return () => container.removeEventListener('wheel', handleWheelManual)
     }, [containerRef, handleWheelManual])
 
-    /** Full reset: animates back to minScale and centers the content in the container */
+    /** Full reset */
     const reset = useCallback(() => {
+        if (isAnimating.current) return
+        isAnimating.current = true
+        
         setIsTransitioning(true)
         setScale(config.minScale)
         
@@ -424,7 +255,6 @@ export const useZoomPan = ({
             const iw = content.offsetWidth || cw
             const ih = content.offsetHeight || ch
 
-            // Calculate center position for the base scale
             setPosition({
                 x: (cw - iw * config.minScale) / 2,
                 y: (ch - ih * config.minScale) / 2,
@@ -436,31 +266,31 @@ export const useZoomPan = ({
         setIsDragging(false)
         dragStartRef.current.hasDragged = false
         cachedRectRef.current = null
-        pinchRef.current = {
-            startDist: 0,
-            initialScale: config.minScale,
-            startX: 0,
-            startY: 0,
-            startPos: { x: 0, y: 0 },
-        }
+        activeGesture.current = 'none'
+        
+        setTimeout(() => {
+            isAnimating.current = false
+        }, TRANSITION_DURATION)
     }, [config.minScale, containerRef, getContentElement])
 
     /**
-     * Programmatic zoom to a specific point in **container viewport coordinates** (pixels relative to top-left of container).
-     * @param x Container-space X coordinate (like clientX - rect.left)
-     * @param y Container-space Y coordinate
-     * @param targetScale Optional zoom level (falls back to clickZoomScale)
+     * Programmatic zoom to a specific point
      */
     const zoomTo = useCallback(
         (x: number, y: number, targetScale?: number) => {
+            if (isAnimating.current) return
+            isAnimating.current = true
+
             setIsTransitioning(true)
             const container = containerRef.current
             const content = getContentElement()
-            if (!container || !content) return
+            if (!container || !content) {
+                isAnimating.current = false
+                return
+            }
 
-            const ts = targetScale ?? config.clickZoomScale
+            const ts = Math.min(Math.max(config.minScale, targetScale ?? config.clickZoomScale), config.maxScale)
 
-            // Normalized point relative to top-left (0,0) focal math
             const px = (x - position.x) / scale
             const py = (y - position.y) / scale
 
@@ -469,58 +299,115 @@ export const useZoomPan = ({
                 y: y - py * ts,
             };
 
-            // Numeric safety guard
             if (isNaN(np.x) || isNaN(np.y) || !isFinite(np.x) || !isFinite(np.y)) {
+                isAnimating.current = false
                 return
             }
 
-            const clamped = getClampedPosition(np, ts, content)
+            const clamped = clampPosition(np, ts, container, content, config.boundsBuffer)
             setScale(ts)
             setPosition(clamped)
+            
+            setTimeout(() => {
+                isAnimating.current = false
+            }, TRANSITION_DURATION)
         },
-        [containerRef, scale, position, config.clickZoomScale, getClampedPosition, getContentElement],
+        [containerRef, scale, position, config.clickZoomScale, config.minScale, config.maxScale, config.boundsBuffer, getContentElement],
     )
 
     /** 
      * Zooms into the specific point in the container that was clicked.
-     * Uses the focal point formula to keep the clicked pixel under the cursor.
      */
     const handleFocalZoom = useCallback(
         (e: React.MouseEvent<HTMLElement>) => {
-            setIsTransitioning(true)
             const container = containerRef.current
-            const content = e.currentTarget as HTMLElement
-            if (!container || !content) return
+            if (!container) return
 
             const rect = container.getBoundingClientRect()
             const mouseX = e.clientX - rect.left
             const mouseY = e.clientY - rect.top
 
-            // Focal transformation (top-left origin)
-            const px = (mouseX - position.x) / scale
-            const py = (mouseY - position.y) / scale
-
-            const targetScale = config.clickZoomScale
-            const newPosition = {
-                x: mouseX - px * targetScale,
-                y: mouseY - py * targetScale,
-            }
-
-            // Numeric safety guard
-            if (isNaN(newPosition.x) || isNaN(newPosition.y) || !isFinite(newPosition.x) || !isFinite(newPosition.y)) {
-                return
-            }
-
-            const clamped = getClampedPosition(newPosition, targetScale, content)
-            setScale(targetScale)
-            setPosition(clamped)
+            zoomTo(mouseX, mouseY, config.clickZoomScale)
         },
-        [containerRef, scale, position, config.clickZoomScale, getClampedPosition],
+        [containerRef, zoomTo, config.clickZoomScale],
     )
 
+    const handleKeyDown = useCallback((e: KeyboardEvent) => {
+        if (!enableZoom) return
+        
+        // Scope keyboard shortcuts to focus or mouse-over state
+        const activeElement = document.activeElement
+        const isFocused = contentRef.current === activeElement || containerRef.current === activeElement || containerRef.current?.contains(activeElement)
+        
+        if (!isFocused && !isMouseOver) return
+
+        // Ignore if user is typing in an input
+        if (activeElement && (
+            activeElement.tagName === 'INPUT' || 
+            activeElement.tagName === 'TEXTAREA' || 
+            (activeElement as HTMLElement).isContentEditable
+        )) {
+            return
+        }
+
+        // If moused over or focused, handle shortcuts. 
+        // We handle +/- regardless of Meta/Ctrl if we are moused over/focused.
+        const container = containerRef.current
+        if (!container) return
+
+        let rect = cachedRectRef.current
+        if (!rect) {
+            rect = container.getBoundingClientRect()
+            cachedRectRef.current = rect
+        }
+        
+        const centerX = rect.width / 2
+        const centerY = rect.height / 2
+
+        const PAN_STEP = 50
+        const ZOOM_STEP = 1.2
+
+        switch(e.key) {
+            case '+':
+            case '=':
+                e.preventDefault()
+                zoomTo(centerX, centerY, scale * ZOOM_STEP)
+                break
+            case '-':
+            case '_':
+                e.preventDefault()
+                zoomTo(centerX, centerY, scale / ZOOM_STEP)
+                break
+            case 'ArrowLeft':
+                e.preventDefault()
+                setPosition(p => clampPosition({ ...p, x: p.x + PAN_STEP }, scale, container, getContentElement(), config.boundsBuffer))
+                break
+            case 'ArrowRight':
+                e.preventDefault()
+                setPosition(p => clampPosition({ ...p, x: p.x - PAN_STEP }, scale, container, getContentElement(), config.boundsBuffer))
+                break
+            case 'ArrowUp':
+                e.preventDefault()
+                setPosition(p => clampPosition({ ...p, y: p.y + PAN_STEP }, scale, container, getContentElement(), config.boundsBuffer))
+                break
+            case 'ArrowDown':
+                e.preventDefault()
+                setPosition(p => clampPosition({ ...p, y: p.y - PAN_STEP }, scale, container, getContentElement(), config.boundsBuffer))
+                break
+            case 'Escape':
+                e.preventDefault()
+                reset()
+                break
+        }
+    }, [enableZoom, scale, containerRef, getContentElement, config.boundsBuffer, zoomTo, reset, isMouseOver])
+
+    useEffect(() => {
+        window.addEventListener('keydown', handleKeyDown)
+        return () => window.removeEventListener('keydown', handleKeyDown)
+    }, [handleKeyDown])
+
     const onImageClick = useCallback(
-        (e: React.MouseEvent<HTMLImageElement>) => {
-            // Prevent zoom if user was dragging
+        (e: React.MouseEvent<T>) => {
             if (dragStartRef.current.hasDragged) {
                 dragStartRef.current.hasDragged = false
                 return
@@ -536,7 +423,7 @@ export const useZoomPan = ({
     )
 
     const onImageDoubleClick = useCallback(
-        (e: React.MouseEvent<HTMLImageElement>) => {
+        (e: React.MouseEvent<T>) => {
             if (scale > config.minScale) {
                 reset()
             } else {
@@ -556,11 +443,9 @@ export const useZoomPan = ({
         const startPinchX = startX - containerRect.left
         const startPinchY = startY - containerRect.top
 
-        // Content point under initial pinch center (top-left origin)
         const contentUnderStartX = (startPinchX - startPos.x) / initialScale
         const contentUnderStartY = (startPinchY - startPos.y) / initialScale
 
-        // Keep that point under current fingers after zoom
         return {
             x: currentPinchX - contentUnderStartX * newScale,
             y: currentPinchY - contentUnderStartY * newScale,
@@ -568,12 +453,12 @@ export const useZoomPan = ({
     }, [])
 
     const onImageTouchStart = useCallback(
-        (e: React.TouchEvent<HTMLImageElement>) => {
+        (e: React.TouchEvent<T>) => {
             setIsTransitioning(false)
             swipeBlockedRef.current = e.touches.length === 2
 
             if (e.touches.length === 2) {
-                // Pinch zoom
+                activeGesture.current = 'pinch'
                 const container = containerRef.current
                 const dist = Math.hypot(
                     e.touches[0].clientX - e.touches[1].clientX,
@@ -594,7 +479,6 @@ export const useZoomPan = ({
                     containerRect
                 }
             } else if (e.touches.length === 1) {
-                // Double tap check
                 const now = Date.now()
                 const DOUBLE_TAP_MS = 300
                 if (now - lastTapTimeRef.current < DOUBLE_TAP_MS) {
@@ -613,14 +497,13 @@ export const useZoomPan = ({
                             )
                         }
                     }
-                    // Ignore next tap for 100ms to prevent triple-tap glitches
                     setTimeout(() => { lastTapTimeRef.current = 0 }, 100)
                     return
                 }
                 lastTapTimeRef.current = now
 
                 if (scale > config.minScale) {
-                    // Swipe navigation disabled when zoomed
+                    activeGesture.current = 'drag'
                     setIsDragging(true)
                     cachedRectRef.current = containerRef.current?.getBoundingClientRect() ?? null
                     dragStartRef.current = {
@@ -633,13 +516,12 @@ export const useZoomPan = ({
                 }
             }
         },
-        [scale, position, config.minScale, config.clickZoomScale, containerRef, reset, zoomTo, getContentElement, getClampedPosition],
+        [scale, position, config.minScale, config.clickZoomScale, containerRef, reset, zoomTo],
     )
 
     const onImageTouchMove = useCallback(
-        (e: React.TouchEvent<HTMLImageElement>) => {
-            if (e.touches.length === 2) {
-                // Pinch zoom
+        (e: React.TouchEvent<T>) => {
+            if (activeGesture.current === 'pinch' && e.touches.length === 2) {
                 e.preventDefault()
                 const dist = Math.hypot(
                     e.touches[0].clientX - e.touches[1].clientX,
@@ -651,44 +533,30 @@ export const useZoomPan = ({
                 const ratio = dist / pinchRef.current.startDist
                 const newScale = Math.min(Math.max(config.minScale, pinchRef.current.initialScale * ratio), config.maxScale)
 
-                if (pinchRef.current.containerRect && newScale > config.minScale) {
-                    const newPosition = getPinchPosition(
-                        centerX, 
-                        centerY, 
-                        newScale, 
-                    )
+                const container = containerRef.current
+                const content = getContentElement()
+
+                if (pinchRef.current.containerRect && newScale > config.minScale && container && content) {
+                    const newPosition = getPinchPosition(centerX, centerY, newScale)
                     
-                    // Numeric safety guard
                     if (isNaN(newPosition.x) || isNaN(newPosition.y) || !isFinite(newPosition.x) || !isFinite(newPosition.y)) {
                         return
                     }
 
-                    const clampedPosition = getClampedPosition(
-                        newPosition,
-                        newScale,
-                        getContentElement() as HTMLElement,
-                    )
+                    const clampedPosition = clampPosition(newPosition, newScale, container, content, config.boundsBuffer)
                     setPosition(clampedPosition)
-                } else {
-                    // Auto-recenter when reaching min scale or if container missing
-                    const container = containerRef.current
-                    const content = getContentElement()
-                    if (container && content) {
-                        const cw = pinchRef.current.containerRect?.width ?? container?.clientWidth ?? 0
-                        const ch = pinchRef.current.containerRect?.height ?? container?.clientHeight ?? 0
-                        const iw = content.offsetWidth || cw
-                        const ih = content.offsetHeight || ch
-                        setPosition({
-                            x: (cw - iw * newScale) / 2,
-                            y: (ch - ih * newScale) / 2,
-                        })
-                    } else {
-                        setPosition({ x: 0, y: 0 })
-                    }
+                } else if (container && content) {
+                    const cw = pinchRef.current.containerRect?.width ?? container.clientWidth
+                    const ch = pinchRef.current.containerRect?.height ?? container.clientHeight
+                    const iw = content.offsetWidth || cw
+                    const ih = content.offsetHeight || ch
+                    setPosition({
+                        x: (cw - iw * newScale) / 2,
+                        y: (ch - ih * newScale) / 2,
+                    })
                 }
                 setScale(newScale)
-            } else if (e.touches.length === 1 && isDragging && scale > config.minScale) {
-                // Pan when zoomed
+            } else if (activeGesture.current === 'drag' && e.touches.length === 1 && isDragging && scale > config.minScale) {
                 e.preventDefault()
                 const touchX = e.touches[0].clientX
                 const touchY = e.touches[0].clientY
@@ -709,17 +577,21 @@ export const useZoomPan = ({
                         y: touchY - dragStartRef.current.y,
                     }
 
-                    const clampedPosition = getClampedPosition(newPosition, scale, e.currentTarget)
-                    setPosition(clampedPosition)
+                    const container = containerRef.current
+                    const content = getContentElement()
+                    if (container && content) {
+                        const clampedPosition = clampPosition(newPosition, scale, container, content, config.boundsBuffer)
+                        setPosition(clampedPosition)
+                    }
                 }
             }
         },
-        [isDragging, scale, getClampedPosition, getContentElement, getPinchPosition, config.minScale, config.maxScale, config.dragThresholdTouch],
+        [isDragging, scale, getContentElement, getPinchPosition, config.minScale, config.maxScale, config.dragThresholdTouch, config.boundsBuffer, containerRef],
     )
 
     const onImageTouchEnd = useCallback(() => {
         setIsDragging(false)
-        // Reset pinch state to avoid stale calculations
+        activeGesture.current = 'none'
         pinchRef.current = {
             startDist: 0,
             initialScale: scale,
@@ -730,11 +602,12 @@ export const useZoomPan = ({
     }, [scale, position])
 
     const onImageMouseDown = useCallback(
-        (e: React.MouseEvent<HTMLImageElement>) => {
+        (e: React.MouseEvent<T>) => {
             setIsTransitioning(false)
             if (scale > config.minScale) {
                 e.preventDefault()
                 setIsDragging(true)
+                activeGesture.current = 'drag'
                 dragStartRef.current = {
                     x: e.clientX - position.x,
                     y: e.clientY - position.y,
@@ -747,28 +620,9 @@ export const useZoomPan = ({
         [scale, position, config.minScale],
     )
 
-    const handleSwipe = useCallback(
-        (targetX: number, targetY: number) => {
-            if (!config.enableSwipe) return
-
-            const distanceX = Math.abs(targetX - dragStartRef.current.startX)
-            const distanceY = Math.abs(targetY - dragStartRef.current.startY)
-
-            // Only consider as swipe if movement is predominantly horizontal
-            if (distanceX > config.swipeThreshold && distanceX > distanceY) {
-                if (targetX < dragStartRef.current.startX) {
-                    onNext?.()
-                } else {
-                    onPrev?.()
-                }
-            }
-        },
-        [config.enableSwipe, config.swipeThreshold, onNext, onPrev]
-    )
-
     const onImageMouseMove = useCallback(
-        (e: React.MouseEvent<HTMLImageElement>) => {
-            if (isDragging && scale > config.minScale) {
+        (e: React.MouseEvent<T>) => {
+            if (activeGesture.current === 'drag' && isDragging && scale > config.minScale) {
                 e.preventDefault()
 
                 if (!dragStartRef.current.hasDragged) {
@@ -787,20 +641,26 @@ export const useZoomPan = ({
                         y: e.clientY - dragStartRef.current.y,
                     }
 
-                    const clampedPosition = getClampedPosition(newPosition, scale, e.currentTarget)
-                    setPosition(clampedPosition)
+                    const container = containerRef.current
+                    const content = getContentElement()
+                    if (container && content) {
+                        const clampedPosition = clampPosition(newPosition, scale, container, content, config.boundsBuffer)
+                        setPosition(clampedPosition)
+                    }
                 }
             }
         },
-        [isDragging, scale, getClampedPosition, config.minScale, config.dragThresholdMouse],
+        [isDragging, scale, config.minScale, config.dragThresholdMouse, config.boundsBuffer, containerRef, getContentElement],
     )
 
     const onImageMouseUp = useCallback(() => {
         setIsDragging(false)
+        activeGesture.current = 'none'
     }, [])
 
     const onImageMouseLeave = useCallback(() => {
         setIsDragging(false)
+        activeGesture.current = 'none'
     }, [])
 
     const onContainerTouchStart = useCallback(
@@ -861,22 +721,24 @@ export const useZoomPan = ({
         [scale, onNext, onPrev, config.minScale, config.swipeThreshold],
     )
 
-    // Clear transition state after duration completes
     useEffect(() => {
         if (!isTransitioning) return
         const timer = setTimeout(() => setIsTransitioning(false), TRANSITION_DURATION)
         return () => clearTimeout(timer)
     }, [isTransitioning])
 
-    // Cleanup handled in main effect hook above
-
     const contentStyle = React.useMemo(() => {
-        const style: React.CSSProperties = {
+        const style: React.CSSProperties & { [key: string]: any } = {
             transformOrigin: '0 0',
             transition: isTransitioning ? `transform ${TRANSITION_DURATION}ms ${TRANSITION_CURVE}` : 'none',
             touchAction: 'none',
             userSelect: 'none',
             WebkitUserSelect: 'none',
+            '--zoom-scale': scale,
+            '--zoom-x': `${position.x}px`,
+            '--zoom-y': `${position.y}px`,
+            transform: 'translate3d(var(--zoom-x), var(--zoom-y), 0) scale(var(--zoom-scale))',
+            willChange: 'transform',
         }
 
         if (config.manageCursor) {
@@ -892,10 +754,10 @@ export const useZoomPan = ({
         }
 
         return style
-    }, [isTransitioning, config.manageCursor, isDragging, scale, config.minScale, enableZoom])
+    }, [isTransitioning, config.manageCursor, isDragging, scale, config.minScale, enableZoom, position.x, position.y])
 
     const contentProps = React.useMemo(() => ({
-        ref: contentRef as React.Ref<any>, // Cast to compatible ref type
+        ref: contentRef,
         style: contentStyle,
         onClick: onImageClick,
         onDoubleClick: onImageDoubleClick,
@@ -906,6 +768,7 @@ export const useZoomPan = ({
         onMouseMove: onImageMouseMove,
         onMouseUp: onImageMouseUp,
         onMouseLeave: onImageMouseLeave,
+        tabIndex: 0,
     }), [
         contentStyle,
         onImageClick,
@@ -924,6 +787,8 @@ export const useZoomPan = ({
         onTouchEnd: onContainerTouchEnd,
         onMouseDown: onContainerMouseDown,
         onMouseUp: onContainerMouseUp,
+        onMouseEnter: () => setIsMouseOver(true),
+        onMouseLeave: () => setIsMouseOver(false),
     }), [
         onContainerTouchStart,
         onContainerTouchEnd,

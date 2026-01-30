@@ -26,6 +26,7 @@ A **zero-dependency**, ultra-lightweight React hook and component for implementi
 - **High Performance**: Uses ref-based interaction tracking and minimal state updates to keep zoom and pan interactions smooth and responsive.
 - **Mouse Controls**: Scroll to zoom at cursor, click to toggle zoom, drag to pan.
 - **Touch Controls**: Pinch to zoom at center, double-tap to zoom/reset, swipe to navigate.
+- **Keyboard Controls**: Zoom with `+`/`-`, pan with arrows, and instant reset with `Esc`.
 - **Precision Focal Math**: Implemented with a top-left origin for rock-solid cursor tracking during zoom.
 - **Smart Bounds**: Prevents over-panning with configurable buffer zones and symmetrical clamping.
 - **Mobile First**: Optimized touch thresholds, double-tap gestures, and native-feeling interactions.
@@ -140,6 +141,12 @@ The `useZoomPan` hook returns an object containing the current state and necessa
 - **Pinch**: Smooth scale at the center of the pinch.
 - **Double Tap**: Toggle zoom level.
 - **Swipe**: Navigate between content (if `onNext`/`onPrev` provided).
+
+### Keyboard Controls
+- **`+` or `=`**: Zoom in at the center of the viewport.
+- **`-` or `_`**: Zoom out from the center of the viewport.
+- **Arrow Keys**: Pan the content in any direction while zoomed.
+- **`Escape`**: Instantly reset zoom and position to default.
 
 ## Performance Tuning
 

@@ -1,7 +1,8 @@
 'use client'
 
 import React, { useRef, CSSProperties } from 'react'
-import { useZoomPan, ZoomPanOptions } from './useZoomPan'
+import { useZoomPan } from './useZoomPan'
+import { ZoomPanOptions } from './types'
 
 interface ZoomPanProps {
     /** The content to be made zoomable and pannable (e.g., an <img> or <svg>) */
@@ -55,7 +56,7 @@ export const ZoomPan: React.FC<ZoomPanProps> = ({
 }) => {
     const containerRef = useRef<HTMLDivElement>(null)
 
-    const { scale, position, contentProps, containerProps } = useZoomPan({
+    const { scale, position, contentProps, containerProps } = useZoomPan<HTMLDivElement>({
         containerRef,
         enableZoom,
         onNext,
@@ -78,7 +79,6 @@ export const ZoomPan: React.FC<ZoomPanProps> = ({
      * calculated by the hook.
      */
     const defaultContentStyle: CSSProperties = {
-        transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
         ...contentProps.style,
         userSelect: 'none',
         WebkitUserSelect: 'none',

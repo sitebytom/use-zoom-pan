@@ -1,3 +1,5 @@
 export { useZoomPan } from './useZoomPan'
 export { ZoomPan } from './ZoomPan'
-export type { ZoomPanOptions } from './useZoomPan'
+export * from './types'
+export * from './constants'
+export * from './utils'

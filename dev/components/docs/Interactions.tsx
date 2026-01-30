@@ -18,7 +18,15 @@ const Interactions = () => (
         <ul className="docs-list">
           <li><strong>Pinch</strong>: Smooth scale at center</li>
           <li><strong>Double Tap</strong>: Toggle zoom level</li>
-          <li><strong>Swipe</strong>: Navigation (if handlers provided)</li>
+          <li><strong>Swipe</strong>: Navigation (if handlers)</li>
+        </ul>
+      </div>
+      <div className="docs-info-card">
+        <h4 className="docs-subtitle">Keyboard</h4>
+        <ul className="docs-list">
+          <li><strong>+/= / -/_</strong>: Zoom in/out</li>
+          <li><strong>Arrow Keys</strong>: Pan while zoomed</li>
+          <li><strong>Escape</strong>: Reset view</li>
         </ul>
       </div>
     </div>
