@@ -8,9 +8,9 @@ const BlueprintExample = () => {
         enableZoom: true,
         options: { 
             maxScale: 12, 
-            minScale: 0.6, 
+            minScale: 0.7, 
             initialScale: 2,
-            initialPosition: { x: 0, y: 0 } 
+            initialPosition: { x: -100, y: 100 } 
         }
     })
 
@@ -83,41 +83,44 @@ const BlueprintExample = () => {
                     ...contentProps.style,
                     width: '1280px',
                     height: '800px',
+                    left: '50%',
+                    top: '50%',
+                    position: 'absolute',
+                    marginTop: '-400px',
+                    marginLeft: '-640px',
                     pointerEvents: 'auto',
-                    transform: `translate(calc(-50% + ${position.x}px), calc(-50% + ${position.y}px)) scale(${scale})`,
-                    willChange: 'transform', 
                     fontFamily: 'var(--font-mono)',
                 }}
             >
                 <svg 
-                    viewBox="0 0 1280 800" 
+                    viewBox="-640 -400 1280 800" 
                     style={{ 
                         width: '100%', 
                         height: '100%', 
                         display: 'block',
-                        background: 'var(--bg)', 
+                        background: '#0D47A1', 
                         pointerEvents: 'none',
                         overflow: 'visible'
                     }}
                 >
                     <defs>
                         <pattern id="subgrid" width="20" height="20" patternUnits="userSpaceOnUse">
-                            <path d="M 20 0 L 0 0 0 20" fill="none" stroke="var(--border)" strokeWidth={traceW * 0.5} opacity="0.5"/>
+                            <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#64B5F6" strokeWidth={traceW * 0.5} opacity="0.3"/>
                         </pattern>
                         <pattern id="hatch" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-                            <line x1="0" y1="0" x2="0" y2="4" stroke="var(--text)" strokeWidth={hairW} opacity="0.2" />
+                            <line x1="0" y1="0" x2="0" y2="4" stroke="#E3F2FD" strokeWidth={hairW} opacity="0.2" />
                         </pattern>
                     </defs>
 
                     {/* Background Grid */}
-                    <rect width="1280" height="800" fill="url(#subgrid)" />
+                    <rect x="-640" y="-400" width="1280" height="800" fill="url(#subgrid)" />
                     
                     {/* Border Frame */}
-                    <rect x="20" y="20" width="1240" height="760" fill="none" stroke="var(--border-bright)" strokeWidth={bridgeW * 2} />
-                    <rect x="30" y="30" width="1220" height="740" fill="none" stroke="var(--border-bright)" strokeWidth={traceW} />
+                    <rect x="-620" y="-380" width="1240" height="760" fill="none" stroke="#FFFFFF" strokeWidth={bridgeW * 2} />
+                    <rect x="-610" y="-370" width="1220" height="740" fill="none" stroke="#B3E5FC" strokeWidth={traceW} />
 
                     {/* CENTER: PLANETARY GEARBOX */}
-                    <g transform="translate(640, 400)" onClick={(e) => handleZoomTo(e, 640, 400)}>
+                    <g transform="translate(0, 0)" onClick={(e) => handleZoomTo(e, 0, 0)}>
                         {/* Center Lines */}
                         <line x1="-220" y1="0" x2="220" y2="0" stroke="#fff" strokeWidth={hairW} strokeDasharray="10 5 2 5" />
                         <line x1="0" y1="-220" x2="0" y2="220" stroke="#fff" strokeWidth={hairW} strokeDasharray="10 5 2 5" />
@@ -139,7 +142,7 @@ const BlueprintExample = () => {
                         {[0, 120, 240].map((baseAngle, i) => (
                             <g key={i} transform={`rotate(${baseAngle}) translate(135, 0)`}>
                                 <g transform={`rotate(${angle * -1.33 + 10})`}>
-                                    <path d={createGearPath(0, 0, 60, 18, 10)} fill="var(--surface-1)" stroke="var(--text)" strokeWidth={traceW} />
+                                    <path d={createGearPath(0, 0, 60, 18, 10)} fill="none" stroke="var(--text)" strokeWidth={traceW} />
                                     <circle r="15" fill="none" stroke="var(--text)" strokeWidth={traceW} />
                                 </g>
                                 <g style={{ opacity: Math.max(0, scale - 2) }}>
@@ -153,13 +156,13 @@ const BlueprintExample = () => {
                         ))}
 
                         {/* Label */}
-                        <text x="160" y="-160" fill="var(--text-dim)" fontSize="14" fontWeight="600">SEC A-A</text>
+                        <text x="160" y="-160" fill="#B3E5FC" fontSize="14" fontWeight="600">SEC A-A</text>
                     </g>
 
                     {/* TOP LEFT: HYDRAULIC PUMP */}
-                    <g transform="translate(280, 250)" onClick={(e) => handleZoomTo(e, 280, 250, 6)}>
+                    <g transform="translate(-360, -150)" onClick={(e) => handleZoomTo(e, -360, -150, 6)}>
                         {/* Pump Body */}
-                        <rect x="-60" y="-80" width="120" height="160" rx="2" fill="var(--surface-1)" stroke="var(--text)" strokeWidth={bridgeW} />
+                        <rect x="-60" y="-80" width="120" height="160" rx="2" fill="none" stroke="var(--text)" strokeWidth={bridgeW} />
                         {/* Mounting Flanges */}
                         <rect x="-80" y="-70" width="20" height="40" fill="url(#hatch)" stroke="var(--text)" strokeWidth={traceW} />
                         <rect x="60" y="-70" width="20" height="40" fill="url(#hatch)" stroke="var(--text)" strokeWidth={traceW} />
@@ -187,17 +190,17 @@ const BlueprintExample = () => {
 
                     {/* CONNECTION LINES (Piping) with Flow Indicators */}
                     <g>
-                        <path d="M 340 250 L 490 250 L 490 400 L 460 400" fill="none" stroke="var(--text)" strokeWidth={traceW} />
-                        <path d="M 940 600 L 820 600 L 820 400 L 790 400" fill="none" stroke="var(--text)" strokeWidth={traceW} />
+                        <path d="M -300 -150 L -150 -150 L -150 0 L -180 0" fill="none" stroke="var(--text)" strokeWidth={traceW} />
+                        <path d="M 300 200 L 180 200 L 180 0 L 150 0" fill="none" stroke="var(--text)" strokeWidth={traceW} />
                         
                         {/* Flow Arrows (Animated) */}
-                        <circle cx={415 + Math.sin(angle * 0.1) * 10} cy="250" r="2" fill="var(--text)" />
-                        <circle cx="490" cy={325 + Math.sin(angle * 0.1) * 20} r="2" fill="var(--text)" />
-                        <circle cx="820" cy={500 + Math.cos(angle * 0.1) * 20} r="2" fill="var(--text)" />
+                        <circle cx={-225 + Math.sin(angle * 0.1) * 10} cy="-150" r="2" fill="var(--text)" />
+                        <circle cx="-150" cy={-75 + Math.sin(angle * 0.1) * 20} r="2" fill="var(--text)" />
+                        <circle cx="180" cy={100 + Math.cos(angle * 0.1) * 20} r="2" fill="var(--text)" />
                     </g>
 
                     {/* BOTTOM RIGHT: RESERVOIR/FILTER */}
-                    <g transform="translate(1000, 600)" onClick={(e) => handleZoomTo(e, 1000, 600, 5)}>
+                    <g transform="translate(360, 200)" onClick={(e) => handleZoomTo(e, 360, 200, 5)}>
                         {/* Cylindrical Tank Symbol */}
                         <ellipse cx="0" cy="-60" rx="60" ry="15" fill="none" stroke="var(--text)" strokeWidth={traceW} />
                         <path d="M -60 -60 L -60 60 A 60 15 0 0 0 60 60 L 60 -60" fill="none" stroke="var(--text)" strokeWidth={bridgeW} />
@@ -207,7 +210,7 @@ const BlueprintExample = () => {
                         {/* Fluid Level Marker - Animated */}
                         <line x1="70" y1="0" x2="80" y2="0" stroke="var(--text)" strokeWidth={traceW} />
                         <path d={`M 75 ${Math.sin(angle * 0.2)*2} L 75 20 L 85 20`} fill="none" stroke="var(--text)" strokeWidth={hairW} />
-                        <text x="90" y="25" fill="var(--text-dim)" fontSize="10">LVL</text>
+                        <text x="90" y="25" fill="#B3E5FC" fontSize="10">LVL</text>
 
                         {/* Filter Element Internal */}
                         <rect x="-30" y="-40" width="60" height="80" fill="none" stroke="var(--text)" strokeWidth={hairW} strokeDasharray="5 5" />
@@ -216,16 +219,16 @@ const BlueprintExample = () => {
                     </g>
 
                      {/* Title Block */}
-                     <g transform="translate(1000, 700)">
+                     <g transform="translate(360, 300)">
                         <rect x="0" y="0" width="260" height="80" fill="none" stroke="var(--text)" strokeWidth={bridgeW} />
                         <path d="M 130 0 L 130 80 M 0 40 L 260 40" stroke="var(--text)" strokeWidth={traceW} />
-                        <text x="10" y="25" fill="var(--text-muted)" fontSize="10" fontWeight="700">PROJECT NO.</text>
+                        <text x="10" y="25" fill="#B3E5FC" fontSize="10" fontWeight="700">PROJECT NO.</text>
                         <text x="70" y="25" fill="var(--text)" fontSize="12" fontWeight="900">99-X-INDUSTRIAL</text>
-                        <text x="10" y="65" fill="var(--text-muted)" fontSize="10" fontWeight="700">SHEET</text>
+                        <text x="10" y="65" fill="#B3E5FC" fontSize="10" fontWeight="700">SHEET</text>
                         <text x="70" y="65" fill="var(--text)" fontSize="12" fontWeight="900">04 / 12</text>
-                        <text x="140" y="25" fill="var(--text-muted)" fontSize="10" fontWeight="700">REV</text>
+                        <text x="140" y="25" fill="#B3E5FC" fontSize="10" fontWeight="700">REV</text>
                         <text x="200" y="25" fill="var(--text)" fontSize="12" fontWeight="900">C.0</text>
-                        <text x="140" y="65" fill="var(--text-muted)" fontSize="10" fontWeight="700">STATUS</text>
+                        <text x="140" y="65" fill="#B3E5FC" fontSize="10" fontWeight="700">STATUS</text>
                         <text x="200" y="65" fill="var(--text)" fontSize="12" fontWeight="900">FINAL</text>
                     </g>
                 </svg>

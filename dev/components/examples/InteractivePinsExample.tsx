@@ -15,10 +15,11 @@ const InteractivePinsExample = () => {
 
   const [activePin, setActivePin] = useState<{ id: number, label: string, x: number, y: number } | null>(null)
 
+  /* Defines pins in coordinate space relative to the center (0,0) of the image */
   const pins = [
-    { id: 1, x: 400, y: 300, label: 'Reindeer' }, // Center of 800x500
-    { id: 2, x: 700, y: 400, label: 'Lake' },     
-    { id: 3, x: 100, y: 160, label: 'Marshes' }   
+    { id: 1, x: 0, y: 50, label: 'Reindeer' },      // 50px down from center
+    { id: 2, x: 300, y: 150, label: 'Lake' },       // Bottom right
+    { id: 3, x: -300, y: -90, label: 'Marshes' }    // Top left
   ]
 
   return (
@@ -33,6 +34,9 @@ const InteractivePinsExample = () => {
               ...contentProps.style,
               width: '800px',
               height: '500px',
+              // Center-origin positioning:
+              // Translate -50% -50% centers the element itself
+              // Then we add the position offset (x,y)
               transform: `translate(calc(-50% + ${position.x}px), calc(-50% + ${position.y}px)) scale(${scale})`,
               background: 'var(--bg)',
           }}
@@ -49,9 +53,10 @@ const InteractivePinsExample = () => {
               key={pin.id} 
               className={`pin ${activePin?.id === pin.id ? 'selected' : ''}`}
               style={{
-                left: pin.x,
-                top: pin.y,
-                transform: `translate(-50%, -100%) scale(${1/scale})`,
+                left: '50%', // Start from center
+                top: '50%',
+                // Move by pin coordinate, and adjust for pin size/anchor
+                transform: `translate(${pin.x}px, ${pin.y}px) translate(-50%, -100%) scale(${1/scale})`,
                 transformOrigin: 'bottom center',
               }}
               onClick={(e) => {

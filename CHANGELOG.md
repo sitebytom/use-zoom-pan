@@ -1,5 +1,11 @@
 # @sitebytom/use-zoom-pan
 
+## 1.0.5
+
+### Patch Changes
+
+- Switch to center origin by default as it required less manual overrides across different examples (e.g. new lightbox example) and made more sense for web content than top-left origin.
+
 ## 1.0.4
 
 ### Patch Changes

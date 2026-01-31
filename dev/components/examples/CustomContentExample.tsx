@@ -32,12 +32,16 @@ const CustomContentExample = () => {
                     ...contentProps.style,
                     width: '600px',
                     height: '400px',
+                    left: '50%',
+                    top: '50%',
+                    position: 'absolute',
+                    marginTop: '-200px',
+                    marginLeft: '-300px',
                     background: 'var(--surface-1)',
                     padding: '40px',
                     display: 'flex',
                     flexDirection: 'column',
                     justifyContent: 'center',
-                    transform: `translate(calc(-50% + ${position.x}px), calc(-50% + ${position.y}px)) scale(${scale})`,
                 }}
             >
                 <div style={{ width: '40px', height: '40px', background: 'var(--text)', borderRadius: 'var(--radius-sm)', marginBottom: '20px' }}></div>

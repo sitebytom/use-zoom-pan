@@ -1,6 +1,6 @@
 {
     "name": "@sitebytom/use-zoom-pan",
-    "version": "1.0.4",
+    "version": "1.0.5",
     "description": "React hook and component for smooth zoom and pan interactions on any content with full mouse and touch support",
     "main": "dist/index.js",
     "module": "dist/index.mjs",

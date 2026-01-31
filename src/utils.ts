@@ -1,18 +1,19 @@
-import { Position, Bounds } from './types'
+import { Position } from './types'
 
-/**
- * Computes the pan boundaries based on the current scale and container/element dimensions.
- * Uses a 'top-left' origin (0,0) coordinate system.
- * Returns min/max translation values so content never shows too much empty space
- * (with buffer when content fits, full edge clamping when zoomed in).
- */
+/** Minimum and maximum allowed translation offsets for the current scale */
+interface Bounds {
+    xLimit: number
+    yLimit: number
+}
+
+/** Calculates the pan boundaries for a given scale and container/element dimensions */
 export const calculateBounds = (
     targetScale: number,
     container: HTMLElement | null,
     element: HTMLElement | null,
     boundsBuffer: number
 ): Bounds => {
-    if (!container || !element) return { minX: 0, maxX: 0, minY: 0, maxY: 0 }
+    if (!container || !element) return { xLimit: 0, yLimit: 0 }
 
     const cw = container.clientWidth
     const ch = container.clientHeight
@@ -22,14 +23,11 @@ export const calculateBounds = (
     const sw = ew * targetScale
     const sh = eh * targetScale
 
-    // When scaled content fits inside container → allow small buffer movement around the center
-    const minX = sw <= cw ? (cw - sw) / 2 - boundsBuffer : cw - sw - boundsBuffer
-    const maxX = sw <= cw ? (cw - sw) / 2 + boundsBuffer : boundsBuffer
+    // In a flex-centered container, the limits are half the overflow
+    const xLimit = Math.max(0, (sw - cw) / 2) + boundsBuffer
+    const yLimit = Math.max(0, (sh - ch) / 2) + boundsBuffer
 
-    const minY = sh <= ch ? (ch - sh) / 2 - boundsBuffer : ch - sh - boundsBuffer
-    const maxY = sh <= ch ? (ch - sh) / 2 + boundsBuffer : boundsBuffer
-
-    return { minX, maxX, minY, maxY }
+    return { xLimit, yLimit }
 }
 
 /** Ensures the given position stays within the calculated pan boundaries */
@@ -40,10 +38,10 @@ export const clampPosition = (
     element: HTMLElement | null,
     boundsBuffer: number
 ): Position => {
-    const b = calculateBounds(targetScale, container, element, boundsBuffer)
+    const { xLimit, yLimit } = calculateBounds(targetScale, container, element, boundsBuffer)
     return {
-        x: Math.max(b.minX, Math.min(b.maxX, pos.x)),
-        y: Math.max(b.minY, Math.min(b.maxY, pos.y)),
+        x: Math.max(-xLimit, Math.min(xLimit, pos.x)),
+        y: Math.max(-yLimit, Math.min(yLimit, pos.y)),
     }
 }
 

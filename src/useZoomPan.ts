@@ -34,12 +34,40 @@ export const useZoomPan = <T extends HTMLElement = HTMLElement>({
         options.initialPosition
     ])
 
-    const contentRef = React.useRef<T | null>(null)
+    const contentRef = React.useRef<HTMLElement | null>(null)
 
     // Internal helper to get content element
     const getContentElement = useCallback(() => {
-        return (contentRef.current || containerRef.current?.firstElementChild) as T | null
+        return (contentRef.current || containerRef.current?.firstElementChild) as HTMLElement | null
     }, [containerRef])
+
+
+
+    /**
+     * Converts container-relative (clientX/Y) to element-relative (at scale 1) coordinates.
+     * (0, 0) is the center of the original content.
+     */
+    const getPointOnContent = useCallback((clientX: number, clientY: number, currentScale: number, currentPosition: Position): Position => {
+        const container = containerRef.current
+        if (!container) return { x: 0, y: 0 }
+
+        const rect = cachedRectRef.current || container.getBoundingClientRect()
+        const content = getContentElement()
+        if (!content) return { x: 0, y: 0 }
+
+        // Get current visual center of content on screen
+        // In a symmetrical layout, the "natural center" is the container center.
+        const contentCenterScreen = {
+            x: rect.left + rect.width / 2 + currentPosition.x,
+            y: rect.top + rect.height / 2 + currentPosition.y,
+        }
+
+        // World coord = (screen pos - content center on screen) / scale
+        return {
+            x: (clientX - contentCenterScreen.x) / currentScale,
+            y: (clientY - contentCenterScreen.y) / currentScale,
+        }
+    }, [containerRef, getContentElement])
 
     const [scale, setScale] = useState(config.initialScale ?? config.minScale)
     const [position, setPosition] = useState<Position>(config.initialPosition ?? { x: 0, y: 0 })
@@ -123,11 +151,19 @@ export const useZoomPan = <T extends HTMLElement = HTMLElement>({
         if (!container || !content) return
         
         const currentPos = { x: stateRef.current.position.x, y: stateRef.current.position.y }
-        const clamped = clampPosition(currentPos, stateRef.current.scale, container, content, config.boundsBuffer)
+        const currentScale = stateRef.current.scale
+        
+        // Auto-recenter when zoomed all the way out
+        if (currentScale <= config.minScale + 0.001) {
+            setPosition({ x: 0, y: 0 })
+            return
+        }
+
+        const clamped = clampPosition(currentPos, currentScale, container, content, config.boundsBuffer)
         if (clamped.x !== currentPos.x || clamped.y !== currentPos.y) {
             setPosition(clamped)
         }
-    }, [containerRef, config.boundsBuffer, getContentElement])
+    }, [containerRef, config.boundsBuffer, config.minScale, getContentElement])
 
     // Keyboard navigation
     useLayoutEffect(() => {
@@ -137,16 +173,7 @@ export const useZoomPan = <T extends HTMLElement = HTMLElement>({
 
         // Initial centering
         if (position.x === 0 && position.y === 0 && scale === (config.initialScale ?? config.minScale)) {
-            const cw = container.clientWidth
-            const ch = container.clientHeight
-            const iw = content.offsetWidth || cw
-            const ih = content.offsetHeight || ch
-
-            const s = scale
-            setPosition({
-                x: (cw - iw * s) / 2,
-                y: (ch - ih * s) / 2,
-            })
+            setPosition({ x: 0, y: 0 })
         }
 
         const observer = new ResizeObserver(() => {
@@ -184,51 +211,33 @@ export const useZoomPan = <T extends HTMLElement = HTMLElement>({
             const delta = normalizeWheelDelta(e, config.zoomSensitivity)
             const newScale = Math.min(Math.max(config.minScale, currentScale + delta), config.maxScale)
 
-            if (newScale === currentScale) return 
+            if (Math.abs(newScale - currentScale) < 0.0001) return 
 
             const container = containerRef.current
             const content = getContentElement()
             
             if (container && content) {
-                let rect = cachedRectRef.current
-                if (!rect || !container) {
-                    rect = container?.getBoundingClientRect() ?? null
-                    cachedRectRef.current = rect
-                }
-                if (!rect) return
-                
-                const mouseX = e.clientX - rect.left
-                const mouseY = e.clientY - rect.top
+                const rect = cachedRectRef.current || container.getBoundingClientRect()
+                const { x: worldX, y: worldY } = getPointOnContent(e.clientX, e.clientY, currentScale, currentPosition)
 
-                const px = (mouseX - currentPosition.x) / currentScale
-                const py = (mouseY - currentPosition.y) / currentScale
+                const mouseInContainerX = e.clientX - rect.left
+                const mouseInContainerY = e.clientY - rect.top
 
                 const newPosition = {
-                    x: mouseX - px * newScale,
-                    y: mouseY - py * newScale,
+                    x: mouseInContainerX - rect.width / 2 - worldX * newScale,
+                    y: mouseInContainerY - rect.height / 2 - worldY * newScale,
                 }
 
                 if (isNaN(newPosition.x) || isNaN(newPosition.y) || !isFinite(newPosition.x) || !isFinite(newPosition.y)) {
                     return
                 }
 
-                if (newScale === config.minScale) {
-                    const cw = rect.width 
-                    const ch = rect.height
-                    const iw = content.offsetWidth || cw
-                    const ih = content.offsetHeight || ch
-                    setPosition({
-                        x: (cw - iw * newScale) / 2,
-                        y: (ch - ih * newScale) / 2
-                    })
-                } else {
-                    const clampedPosition = clampPosition(newPosition, newScale, container, content, config.boundsBuffer)
-                    setPosition(clampedPosition)
-                }
+                const clampedPosition = clampPosition(newPosition, newScale, container, content, config.boundsBuffer)
+                setPosition(clampedPosition)
                 setScale(newScale)
             }
         },
-        [containerRef, getContentElement],
+        [containerRef, getContentElement, getPointOnContent],
     )
 
     useEffect(() => {
@@ -246,22 +255,7 @@ export const useZoomPan = <T extends HTMLElement = HTMLElement>({
         
         setIsTransitioning(true)
         setScale(config.minScale)
-        
-        const container = containerRef.current
-        const content = getContentElement()
-        if (container && content) {
-            const cw = container.clientWidth
-            const ch = container.clientHeight
-            const iw = content.offsetWidth || cw
-            const ih = content.offsetHeight || ch
-
-            setPosition({
-                x: (cw - iw * config.minScale) / 2,
-                y: (ch - ih * config.minScale) / 2,
-            })
-        } else {
-            setPosition({ x: 0, y: 0 })
-        }
+        setPosition({ x: 0, y: 0 })
 
         setIsDragging(false)
         dragStartRef.current.hasDragged = false
@@ -271,13 +265,13 @@ export const useZoomPan = <T extends HTMLElement = HTMLElement>({
         setTimeout(() => {
             isAnimating.current = false
         }, TRANSITION_DURATION)
-    }, [config.minScale, containerRef, getContentElement])
+    }, [config.minScale])
 
     /**
      * Programmatic zoom to a specific point
      */
     const zoomTo = useCallback(
-        (x: number, y: number, targetScale?: number) => {
+        (x: number, y: number, targetScale?: number, targetScreenX?: number, targetScreenY?: number, cachedRect?: DOMRect) => {
             if (isAnimating.current) return
             isAnimating.current = true
 
@@ -289,30 +283,34 @@ export const useZoomPan = <T extends HTMLElement = HTMLElement>({
                 return
             }
 
-            const ts = Math.min(Math.max(config.minScale, targetScale ?? config.clickZoomScale), config.maxScale)
+            const scaleToUse = Math.min(Math.max(config.minScale, targetScale ?? config.clickZoomScale), config.maxScale)
+            const rect = cachedRect || container.getBoundingClientRect()
+            
+            // Default to container center if no target given (for keyboard +/- etc.)
+            const desiredX = targetScreenX ?? rect.width / 2
+            const desiredY = targetScreenY ?? rect.height / 2
 
-            const px = (x - position.x) / scale
-            const py = (y - position.y) / scale
+            // Formula: translate so that world point x/y lands at screen location desiredX/Y
+            const newPosition = {
+                x: desiredX - rect.width / 2 - x * scaleToUse,
+                y: desiredY - rect.height / 2 - y * scaleToUse,
+            }
 
-            const np = {
-                x: x - px * ts,
-                y: y - py * ts,
-            };
-
-            if (isNaN(np.x) || isNaN(np.y) || !isFinite(np.x) || !isFinite(np.y)) {
+            if (isNaN(newPosition.x) || isNaN(newPosition.y) || !isFinite(newPosition.x) || !isFinite(newPosition.y)) {
                 isAnimating.current = false
                 return
             }
 
-            const clamped = clampPosition(np, ts, container, content, config.boundsBuffer)
-            setScale(ts)
-            setPosition(clamped)
+            const clampedPosition = clampPosition(newPosition, scaleToUse, container, content, config.boundsBuffer)
+
+            setScale(scaleToUse)
+            setPosition(clampedPosition)
             
             setTimeout(() => {
                 isAnimating.current = false
             }, TRANSITION_DURATION)
         },
-        [containerRef, scale, position, config.clickZoomScale, config.minScale, config.maxScale, config.boundsBuffer, getContentElement],
+        [config.minScale, config.clickZoomScale, config.maxScale, config.boundsBuffer, containerRef, getContentElement],
     )
 
     /** 
@@ -324,12 +322,13 @@ export const useZoomPan = <T extends HTMLElement = HTMLElement>({
             if (!container) return
 
             const rect = container.getBoundingClientRect()
-            const mouseX = e.clientX - rect.left
-            const mouseY = e.clientY - rect.top
+            const clickInContainerX = e.clientX - rect.left
+            const clickInContainerY = e.clientY - rect.top
 
-            zoomTo(mouseX, mouseY, config.clickZoomScale)
+            const { x, y } = getPointOnContent(e.clientX, e.clientY, scale, position)
+            zoomTo(x, y, config.clickZoomScale, clickInContainerX, clickInContainerY, rect)
         },
-        [containerRef, zoomTo, config.clickZoomScale],
+        [containerRef, zoomTo, config.clickZoomScale, getPointOnContent, scale, position],
     )
 
     const handleKeyDown = useCallback((e: KeyboardEvent) => {
@@ -353,16 +352,11 @@ export const useZoomPan = <T extends HTMLElement = HTMLElement>({
         // If moused over or focused, handle shortcuts. 
         // We handle +/- regardless of Meta/Ctrl if we are moused over/focused.
         const container = containerRef.current
-        if (!container) return
+        const content = getContentElement()
+        if (!container || !content) return
 
-        let rect = cachedRectRef.current
-        if (!rect) {
-            rect = container.getBoundingClientRect()
-            cachedRectRef.current = rect
-        }
-        
-        const centerX = rect.width / 2
-        const centerY = rect.height / 2
+        const centerRelativeX = 0 // Center of content
+        const centerRelativeY = 0
 
         const PAN_STEP = 50
         const ZOOM_STEP = 1.2
@@ -371,28 +365,28 @@ export const useZoomPan = <T extends HTMLElement = HTMLElement>({
             case '+':
             case '=':
                 e.preventDefault()
-                zoomTo(centerX, centerY, scale * ZOOM_STEP)
+                zoomTo(centerRelativeX, centerRelativeY, scale * ZOOM_STEP)
                 break
             case '-':
             case '_':
                 e.preventDefault()
-                zoomTo(centerX, centerY, scale / ZOOM_STEP)
+                zoomTo(centerRelativeX, centerRelativeY, scale / ZOOM_STEP)
                 break
             case 'ArrowLeft':
                 e.preventDefault()
-                setPosition(p => clampPosition({ ...p, x: p.x + PAN_STEP }, scale, container, getContentElement(), config.boundsBuffer))
+                setPosition(p => clampPosition({ ...p, x: p.x + PAN_STEP }, scale, container, content, config.boundsBuffer))
                 break
             case 'ArrowRight':
                 e.preventDefault()
-                setPosition(p => clampPosition({ ...p, x: p.x - PAN_STEP }, scale, container, getContentElement(), config.boundsBuffer))
+                setPosition(p => clampPosition({ ...p, x: p.x - PAN_STEP }, scale, container, content, config.boundsBuffer))
                 break
             case 'ArrowUp':
                 e.preventDefault()
-                setPosition(p => clampPosition({ ...p, y: p.y + PAN_STEP }, scale, container, getContentElement(), config.boundsBuffer))
+                setPosition(p => clampPosition({ ...p, y: p.y + PAN_STEP }, scale, container, content, config.boundsBuffer))
                 break
             case 'ArrowDown':
                 e.preventDefault()
-                setPosition(p => clampPosition({ ...p, y: p.y - PAN_STEP }, scale, container, getContentElement(), config.boundsBuffer))
+                setPosition(p => clampPosition({ ...p, y: p.y - PAN_STEP }, scale, container, content, config.boundsBuffer))
                 break
             case 'Escape':
                 e.preventDefault()
@@ -437,20 +431,16 @@ export const useZoomPan = <T extends HTMLElement = HTMLElement>({
         const { containerRect, startX, startY, initialScale, startPos } = pinchRef.current
         if (!containerRect) return { x: 0, y: 0 }
 
-        const currentPinchX = centerX - containerRect.left
-        const currentPinchY = centerY - containerRect.top
-
-        const startPinchX = startX - containerRect.left
-        const startPinchY = startY - containerRect.top
-
-        const contentUnderStartX = (startPinchX - startPos.x) / initialScale
-        const contentUnderStartY = (startPinchY - startPos.y) / initialScale
+        const { x: worldX, y: worldY } = getPointOnContent(startX, startY, initialScale, startPos)
+        
+        const pinchInContainerX = centerX - containerRect.left
+        const pinchInContainerY = centerY - containerRect.top
 
         return {
-            x: currentPinchX - contentUnderStartX * newScale,
-            y: currentPinchY - contentUnderStartY * newScale,
+            x: pinchInContainerX - containerRect.width / 2 - worldX * newScale,
+            y: pinchInContainerY - containerRect.height / 2 - worldY * newScale,
         }
-    }, [])
+    }, [getPointOnContent])
 
     const onImageTouchStart = useCallback(
         (e: React.TouchEvent<T>) => {
@@ -488,13 +478,12 @@ export const useZoomPan = <T extends HTMLElement = HTMLElement>({
                     } else {
                         const touch = e.touches[0]
                         const container = containerRef.current
-                        const rect = container?.getBoundingClientRect()
-                        if (rect) {
-                            zoomTo(
-                                touch.clientX - rect.left,
-                                touch.clientY - rect.top,
-                                config.clickZoomScale
-                            )
+                        if (container) {
+                            const rect = container.getBoundingClientRect()
+                            const touchInContainerX = touch.clientX - rect.left
+                            const touchInContainerY = touch.clientY - rect.top
+                            const { x, y } = getPointOnContent(touch.clientX, touch.clientY, scale, position)
+                            zoomTo(x, y, config.clickZoomScale, touchInContainerX, touchInContainerY, rect)
                         }
                     }
                     setTimeout(() => { lastTapTimeRef.current = 0 }, 100)
@@ -546,14 +535,7 @@ export const useZoomPan = <T extends HTMLElement = HTMLElement>({
                     const clampedPosition = clampPosition(newPosition, newScale, container, content, config.boundsBuffer)
                     setPosition(clampedPosition)
                 } else if (container && content) {
-                    const cw = pinchRef.current.containerRect?.width ?? container.clientWidth
-                    const ch = pinchRef.current.containerRect?.height ?? container.clientHeight
-                    const iw = content.offsetWidth || cw
-                    const ih = content.offsetHeight || ch
-                    setPosition({
-                        x: (cw - iw * newScale) / 2,
-                        y: (ch - ih * newScale) / 2,
-                    })
+                    setPosition({ x: 0, y: 0 })
                 }
                 setScale(newScale)
             } else if (activeGesture.current === 'drag' && e.touches.length === 1 && isDragging && scale > config.minScale) {
@@ -728,16 +710,13 @@ export const useZoomPan = <T extends HTMLElement = HTMLElement>({
     }, [isTransitioning])
 
     const contentStyle = React.useMemo(() => {
-        const style: React.CSSProperties & { [key: string]: any } = {
-            transformOrigin: '0 0',
-            transition: isTransitioning ? `transform ${TRANSITION_DURATION}ms ${TRANSITION_CURVE}` : 'none',
+        const style: React.CSSProperties = {
+            transformOrigin: 'center',
+            transition: (isTransitioning && activeGesture.current === 'none') ? `transform ${TRANSITION_DURATION}ms ${TRANSITION_CURVE}` : 'none',
             touchAction: 'none',
             userSelect: 'none',
             WebkitUserSelect: 'none',
-            '--zoom-scale': scale,
-            '--zoom-x': `${position.x}px`,
-            '--zoom-y': `${position.y}px`,
-            transform: 'translate3d(var(--zoom-x), var(--zoom-y), 0) scale(var(--zoom-scale))',
+            transform: `translate3d(${position.x}px, ${position.y}px, 0) scale(${scale})`,
             willChange: 'transform',
         }
 
@@ -757,7 +736,9 @@ export const useZoomPan = <T extends HTMLElement = HTMLElement>({
     }, [isTransitioning, config.manageCursor, isDragging, scale, config.minScale, enableZoom, position.x, position.y])
 
     const contentProps = React.useMemo(() => ({
-        ref: contentRef,
+        ref: (node: HTMLElement | null) => {
+            contentRef.current = node
+        },
         style: contentStyle,
         onClick: onImageClick,
         onDoubleClick: onImageDoubleClick,

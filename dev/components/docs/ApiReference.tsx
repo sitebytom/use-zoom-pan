@@ -12,6 +12,9 @@ const ApiReference = () => (
           ['onNext / onPrev', '() => void', '-', 'Callbacks for swipe-based navigation.'],
           ['options', 'ZoomPanOptions', '-', 'Configuration overrides (see Options below).'],
           ['className', 'string', '-', 'Additional CSS class for the container.'],
+          ['style', 'CSSProperties', '-', 'Inline styles for the container.'],
+          ['contentClassName', 'string', '-', 'CSS class for the inner content wrapper.'],
+          ['contentStyle', 'CSSProperties', '-', 'Inline styles for the inner content wrapper.'],
         ]}
       />
     </Section>
@@ -22,7 +25,7 @@ const ApiReference = () => (
         headers={['Option', 'Type', 'Default', 'Description']}
         rows={[
           ['minScale', 'number', '1', 'Minimum zoom level.'],
-          ['maxScale', 'number', '4', 'Maximum zoom level.'],
+          ['maxScale', 'number', '6', 'Maximum zoom level.'],
           ['zoomSensitivity', 'number', '0.002', 'Scaling multiplier for scroll wheel.'],
           ['clickZoomScale', 'number', '2.5', 'Snap-to scale on double click/tap.'],
            ['boundsBuffer', 'number', '80', 'Extra panning room beyond content edges.'],
@@ -42,10 +45,11 @@ const ApiReference = () => (
       <Table 
         headers={['Value', 'Type', 'Description']}
         rows={[
-          ['scale', 'number', 'Current zoom level (1-4 by default).'],
+          ['scale', 'number', 'Current zoom level (1-6 by default).'],
           ['position', '{ x, y }', 'Current pan coordinates.'],
           ['isDragging', 'boolean', 'True when the user is actively panning.'],
           ['reset', '() => void', 'Resets zoom and pan to defaults.'],
+          ['zoomTo', '(x, y, scale) => void', 'Imperative zoom to specific coordinates and scale.'],
           ['contentProps', 'object', 'Event handlers to spread on the zoomable content.'],
           ['containerProps', 'object', 'Event handlers to spread on the container element.'],
         ]}

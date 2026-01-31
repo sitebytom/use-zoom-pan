@@ -25,6 +25,9 @@ import interactivePinsCode from './components/examples/InteractivePinsExample?ra
 import BlueprintExample from './components/examples/BlueprintExample'
 import blueprintCode from './components/examples/BlueprintExample?raw'
 
+import LightboxExample from './components/examples/LightboxExample'
+import lightboxCode from './components/examples/LightboxExample?raw'
+
 import CustomContentExample from './components/examples/CustomContentExample'
 import customContentCode from './components/examples/CustomContentExample?raw'
 
@@ -39,6 +42,7 @@ export default function App() {
     { id: 'simple', label: 'Simple Component', component: <Panel title="Basic Image Viewing" className="aspect-16-10" description="The most common use-case. Seamlessly add zoom-and-pan to any standard image using the high-level ZoomPan component." code={simpleImageCode} preview={<SimpleImageExample />} /> },
     { id: 'hook', label: 'Hook & Playground', component: <Panel title="Lower-level Hook Usage" description="Full control over the zoom-and-pan state. Use this approach when you need to integrate the core primitives into your own custom UI or layouts." code={customHookCode} preview={<CustomHookExample mode="viewport" options={playgroundOptions} onReset={() => setPlaygroundOptions(DEFAULT_PLAYGROUND_OPTIONS)} setOptions={setPlaygroundOptions} />} extra={<CustomHookExample mode="controls" options={playgroundOptions} setOptions={setPlaygroundOptions} onReset={() => {}} />} /> },
     { id: 'gallery', label: 'Gallery & Swipe', component: <Panel title="Image Gallery" className="aspect-16-10" description="Touch-friendly navigation for multi-image interfaces. Supports both swipe-to-navigate and pinch-to-zoom for a native mobile feel." code={galleryCode} preview={<GalleryExample />} /> },
+    { id: 'lightbox', label: 'Lightbox Modal', component: <Panel title="Lightbox Modal" className="aspect-16-10" description="Full-screen modal overlay with thumbnail grid navigation. Demonstrates how to integrate zoom-and-pan into complex interactive UI flows." code={lightboxCode} preview={<LightboxExample />} /> },
     { id: 'pins', label: 'Interactive Pins', component: <Panel title="Interactive Pins" className="aspect-16-10" description="Coordinate-based annotations. Demonstrates how to pin markers to specific points on an image that stay fixed as you zoom and pan." code={interactivePinsCode} preview={<InteractivePinsExample />} /> },
     { id: 'svg', label: 'Mechanical Blueprint', component: <Panel title="Mechanical Blueprint" className="aspect-16-10" description="Technical drawing visualization. High-performance rendering of complex SVG assets with precision zooming for reading fine details." code={blueprintCode} preview={<BlueprintExample />} /> },
     { id: 'content', label: 'Rich Content', component: <Panel title="HTML Content Zoom" className="aspect-16-10" description="Generalized zoom-and-pan logic. Demonstrates that you can scale arbitrary HTML content e.g. text, layouts, and sub-elements not just media." code={customContentCode} preview={<CustomContentExample />} /> },

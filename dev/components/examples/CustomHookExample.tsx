@@ -7,7 +7,7 @@ import { DEFAULT_PLAYGROUND_OPTIONS } from './constants'
 const CustomHookViewport = ({ options, onReset }: { options: typeof DEFAULT_PLAYGROUND_OPTIONS, onReset: () => void }) => {
   const containerRef = useRef<HTMLDivElement>(null)
   
-  const { scale, position, contentProps, reset } = useZoomPan({
+  const { scale, position, contentProps, reset } = useZoomPan<HTMLDivElement>({
     containerRef,
     enableZoom: true,
     options
@@ -24,7 +24,7 @@ const CustomHookViewport = ({ options, onReset }: { options: typeof DEFAULT_PLAY
       className="viewport-container aspect-16-10"
     >
       <img
-        {...contentProps}
+        {...(contentProps as any)}
         src={`${import.meta.env.BASE_URL}assets/image-2.webp`}
         alt="Photography"
         draggable={false}
@@ -34,7 +34,6 @@ const CustomHookViewport = ({ options, onReset }: { options: typeof DEFAULT_PLAY
           width: '100%',
           height: '100%',
           objectFit: 'cover',
-          transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
         }}
       />
       

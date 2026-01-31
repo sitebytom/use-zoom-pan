@@ -68,24 +68,20 @@ export const ZoomPan: React.FC<ZoomPanProps> = ({
         width: '100%',
         height: '100%',
         overflow: 'hidden',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
         cursor: scale > 1 ? 'grab' : enableZoom ? 'zoom-in' : 'default',
         position: 'relative',
         ...style,
     }
 
-    /**
-     * Styles for the content wrapper.
-     * We use fixed top-left positioning and apply the scale/translate transforms
-     * calculated by the hook.
-     */
     const defaultContentStyle: CSSProperties = {
-        ...contentProps.style,
         userSelect: 'none',
         WebkitUserSelect: 'none',
         touchAction: 'none',
-        position: 'absolute',
-        top: 0,
-        left: 0,
+        maxWidth: '100%',
+        maxHeight: '100%',
         ...contentStyle,
     }
 

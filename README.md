@@ -16,6 +16,7 @@ A **zero-dependency**, ultra-lightweight React hook and component for implementi
 - [Simple Image Viewer](https://sitebytom.github.io/use-zoom-pan/#simple)
 - [Hook & Live Playground](https://sitebytom.github.io/use-zoom-pan/#hook)
 - [Gallery with Swipe Navigation](https://sitebytom.github.io/use-zoom-pan/#gallery)
+- [Lightbox Modal](https://sitebytom.github.io/use-zoom-pan/#lightbox)
 - [Interactive Map Pins](https://sitebytom.github.io/use-zoom-pan/#pins)
 - [SVG Blueprint Visualization](https://sitebytom.github.io/use-zoom-pan/#svg)
 - [Rich HTML Content Zoom](https://sitebytom.github.io/use-zoom-pan/#content)
@@ -98,6 +99,9 @@ Spread `containerProps` onto your container element if you want the hook to mana
 | `onNext / onPrev` | `() => void` | - | Callbacks for swipe-based navigation. |
 | `options` | `ZoomPanOptions` | - | Configuration overrides (see Options below). |
 | `className` | `string` | - | Additional CSS class for the container. |
+| `style` | `CSSProperties` | - | Inline styles for the container. |
+| `contentClassName` | `string` | - | CSS class for the inner content wrapper. |
+| `contentStyle` | `CSSProperties` | - | Inline styles for the inner content wrapper. |
 
 ### Configuration Options
 
